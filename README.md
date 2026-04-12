@@ -1,6 +1,6 @@
 # Calendar Webhook
 
-Combine multiple ICS calendars and send to webhooks with multi-source tracking. Designed for TRMNL e-ink displays but works with any webhook endpoint.
+Combine multiple ICS calendars and send to webhooks with multi-source tracking. Works with any webhook endpoint that accepts JSON. Also useful for [TRMNL](https://github.com/jasonwaters/trmnl) BYOS users.
 
 ## Features
 
@@ -11,13 +11,11 @@ Combine multiple ICS calendars and send to webhooks with multi-source tracking. 
 - ✅ **Timezone-aware** - Properly handles timezone-specific events and preserves local dates
 - ✅ **Multiple webhooks** - Send different calendar combinations to different endpoints
 - ✅ **Flexible configuration** - JSON config file for easy management
-- ✅ **E-ink optimized** - TRMNL plugin views with source color distinction
 - ✅ **Comprehensive tests** - 17 test cases covering edge cases and functionality
 
 ## Installation
 
 ```bash
-cd /Users/waters/Development/calendar-webhook
 npm install
 ```
 
@@ -81,7 +79,6 @@ The config file contains an array of webhook configurations. Each configuration 
 
 #### `webhookUrl` (required)
 - The webhook endpoint to POST calendar data to
-- TRMNL format: `https://usetrmnl.com/api/custom_plugins/[your-id]`
 - Can be any webhook endpoint that accepts JSON
 
 #### `sources` (required, array)
@@ -164,7 +161,7 @@ Defines which events to include in the webhook payload.
         "label": "Rentals"
       },
       {
-        "icsPath": "https://calendar.google.com/calendar/ical/personal@gmail.com/basic.ics",
+        "icsPath": "https://calendar.google.com/calendar/ical/you@gmail.com/basic.ics",
         "label": "Personal"
       },
       {
@@ -287,28 +284,6 @@ The test suite covers:
 
 See [test/README.md](test/README.md) for detailed test documentation.
 
-## TRMNL Plugin Views
-
-The companion TRMNL plugin includes 7 views, all using SimpleCalendarJS with multi-source color support:
-
-| View | Size | Type | Events |
-|------|------|------|--------|
-| `full_month.liquid` | 800x480 | Month grid | Current month |
-| `full_week.liquid` | 800x480 | Week grid | Current week |
-| `full_today.liquid` | 800x480 | Day schedule | Today only |
-| `full.liquid` | 800x480 | List | 15 upcoming |
-| `half_horizontal.liquid` | 400x480 | List | 8 upcoming |
-| `half_vertical.liquid` | 800x240 | List | 6 upcoming |
-| `quadrant.liquid` | 400x240 | List | 4 upcoming |
-
-### Source Color Distinction
-
-Events from different calendars are visually distinguished using e-ink-friendly grayscale colors:
-- Source 0: `#000000` (black)
-- Source 1: `#333333` (dark gray)
-- Source 2: `#666666` (medium gray)
-- Source 3: `#999999` (light gray)
-
 ## How It Works
 
 1. **Load config** from `config/webhooks.json`
@@ -386,7 +361,7 @@ All April events included! This is why smart mode is recommended.
 Add to crontab to run every hour:
 
 ```bash
-0 * * * * cd /Users/waters/Development/calendar-webhook && npm start >> /tmp/calendar-webhook.log 2>&1
+0 * * * * cd /path/to/calendar-webhook && npm start >> /tmp/calendar-webhook.log 2>&1
 ```
 
 ### GitHub Actions
@@ -428,15 +403,7 @@ cp config/webhooks.example.json config/webhooks.json
 
 Check:
 1. Webhook URL is correct
-2. TRMNL plugin ID is valid
-3. Network connectivity
-
-### Events not showing in TRMNL view
-
-Check:
-1. Events are within date window
-2. TRMNL plugin is using correct webhook
-3. View is filtering correctly (e.g., list views show "today forward")
+2. Network connectivity
 
 ## License
 

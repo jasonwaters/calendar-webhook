@@ -1,0 +1,5 @@
+services:
+  calendar-webhook:
+    build: .
+    volumes:
+      - ./config:/app/config
