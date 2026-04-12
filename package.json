@@ -1,0 +1,28 @@
+{
+  "name": "calendar-webhook",
+  "version": "1.0.0",
+  "description": "Combine multiple ICS calendars and send to webhooks with multi-source tracking",
+  "main": "src/ics-to-webhook.js",
+  "scripts": {
+    "start": "node src/ics-to-webhook.js",
+    "webhook": "node src/ics-to-webhook.js",
+    "test": "node test/ics-to-webhook.test.js"
+  },
+  "keywords": [
+    "calendar",
+    "ical",
+    "ics",
+    "webhook",
+    "trmnl",
+    "multi-calendar",
+    "calendar-sync"
+  ],
+  "author": "Jason Waters",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "ical.js": "^2.2.1"
+  }
+}

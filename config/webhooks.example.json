@@ -1,0 +1,21 @@
+[
+  {
+    "name": "My Combined Calendar",
+    "webhookUrl": "https://usetrmnl.com/api/custom_plugins/your-plugin-id",
+    "sources": [
+      {
+        "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",
+        "label": "Rentals"
+      },
+      {
+        "icsPath": "https://calendar.google.com/calendar/ical/your-email@gmail.com/basic.ics",
+        "label": "Personal"
+      }
+    ],
+    "payloadKey": "merge_variables",
+    "dateWindow": {
+      "mode": "smart",
+      "futureMonths": 2
+    }
+  }
+]
