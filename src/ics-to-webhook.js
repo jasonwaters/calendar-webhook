@@ -162,17 +162,42 @@ function eventToJson(vevent, source, occurrenceStart = null, occurrenceEnd = nul
   };
 }
 
-function expandRecurringEvent(event, vevent, dateWindow, source) {
+function buildRecurrenceOverrideKey(uid, recurrenceTime) {
+  if (!uid || !recurrenceTime) return null;
+  const occurrenceType = recurrenceTime.isDate ? "date" : "datetime";
+  return `${uid}::${occurrenceType}::${recurrenceTime.toJSDate().getTime()}`;
+}
+
+function collectRecurringOverrideKeys(vevents) {
+  const overrideKeys = new Set();
+
+  for (const vevent of vevents) {
+    const recurrenceId = vevent.getFirstPropertyValue("recurrence-id");
+    const event = new ICAL.Event(vevent);
+    const key = buildRecurrenceOverrideKey(event.uid, recurrenceId);
+    if (key) {
+      overrideKeys.add(key);
+    }
+  }
+
+  return overrideKeys;
+}
+
+function expandRecurringEvent(event, vevent, dateWindow, source, recurringOverrideKeys) {
   const occurrences = [];
   
   const { minDate, maxDate } = dateWindow;
   
   const expand = event.iterator();
-  let next;
   let count = 0;
   const maxOccurrences = 1000;
 
-  while ((next = expand.next()) && count < maxOccurrences) {
+  while (count < maxOccurrences) {
+    const next = expand.next();
+    if (!next) {
+      break;
+    }
+
     count++;
     
     const occurrenceStart = next;
@@ -182,6 +207,11 @@ function expandRecurringEvent(event, vevent, dateWindow, source) {
 
     const startJs = occurrenceStart.toJSDate();
     const endJs = occurrenceEnd.toJSDate();
+
+    const overrideKey = buildRecurrenceOverrideKey(event.uid, occurrenceStart);
+    if (overrideKey && recurringOverrideKeys.has(overrideKey)) {
+      continue;
+    }
 
     if (startJs > maxDate) {
       break;
@@ -202,12 +232,25 @@ function parseIcsToEvents(icsContent, sourceName, dateWindow = null) {
 
   const vevents = component.getAllSubcomponents("vevent");
   const events = [];
+  const recurringOverrideKeys = collectRecurringOverrideKeys(vevents);
 
   for (const vevent of vevents) {
     const event = new ICAL.Event(vevent);
+    const recurrenceId = vevent.getFirstPropertyValue("recurrence-id");
+
+    if (recurrenceId) {
+      events.push(eventToJson(vevent, sourceName));
+      continue;
+    }
 
     if (event.isRecurring() && dateWindow) {
-      const occurrences = expandRecurringEvent(event, vevent, dateWindow, sourceName);
+      const occurrences = expandRecurringEvent(
+        event,
+        vevent,
+        dateWindow,
+        sourceName,
+        recurringOverrideKeys,
+      );
       events.push(...occurrences);
     } else {
       events.push(eventToJson(vevent, sourceName));

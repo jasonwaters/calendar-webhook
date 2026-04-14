@@ -1,8 +1,6 @@
 const assert = require("assert");
-const ICAL = require("ical.js");
 const {
   parseIcsToEvents,
-  filterByDateWindow,
   sortByStartTime,
   buildPayload,
 } = require("../src/ics-to-webhook.js");
@@ -105,6 +103,26 @@ SUMMARY:${summary}
 DTSTART;${tz}${startDateTime}
 DTEND;${tz}${endDateTime}
 RRULE:${rrule}
+CREATED:20260101T120000Z
+DTSTAMP:20260101T120000Z
+END:VEVENT`;
+}
+
+function createRecurringOverrideEvent(
+  uid,
+  summary,
+  recurrenceId,
+  startDateTime,
+  endDateTime,
+  tzid = null,
+) {
+  const tzParam = tzid ? `;TZID=${tzid}` : "";
+  return `BEGIN:VEVENT
+UID:${uid}
+SUMMARY:${summary}
+RECURRENCE-ID${tzParam}:${recurrenceId}
+DTSTART${tzParam}:${startDateTime}
+DTEND${tzParam}:${endDateTime}
 CREATED:20260101T120000Z
 DTSTAMP:20260101T120000Z
 END:VEVENT`;
@@ -225,6 +243,44 @@ describe("Recurring Event Expansion", () => {
     const { events } = parseIcsToEvents(ics, "Test Source", dateWindow);
     
     assert.strictEqual(events.length, 0, "Should not expand events outside date window");
+  });
+
+  it("should replace recurring occurrence with RECURRENCE-ID override", () => {
+    const ics = createIcsCalendar([
+      createRecurringEvent(
+        "override-1",
+        "Zac: Picklr",
+        "20260414T160000",
+        "20260414T180000",
+        "FREQ=DAILY;COUNT=3",
+        "America/Denver",
+      ),
+      createRecurringOverrideEvent(
+        "override-1",
+        "Zac: Picklr: We take/they pickup",
+        "20260415T160000",
+        "20260415T160000",
+        "20260415T180000",
+        "America/Denver",
+      ),
+    ]);
+
+    const dateWindow = {
+      minDate: new Date("2026-04-01"),
+      maxDate: new Date("2026-04-30"),
+    };
+
+    const { events } = parseIcsToEvents(ics, "Family", dateWindow);
+
+    const overriddenDateEvents = events.filter((event) => event.start_date === "2026-04-15");
+    assert.strictEqual(overriddenDateEvents.length, 1, "Expected one event for overridden instance");
+    assert.strictEqual(overriddenDateEvents[0].summary, "Zac: Picklr: We take/they pickup");
+
+    assert.strictEqual(
+      events.length,
+      3,
+      `Expected 3 total events (master count), got ${events.length}`,
+    );
   });
 });
 
