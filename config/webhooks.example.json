@@ -2,7 +2,11 @@
   {
     "name": "My Combined Calendar",
     "webhookUrls": [
-      "https://usetrmnl.com/api/custom_plugins/your-plugin-id"
+      {
+        "title": "Living Room Display",
+        "recipeUrl": "https://usetrmnl.com/plugins/recipe/123",
+        "webhookUrl": "https://usetrmnl.com/api/custom_plugins/your-plugin-id"
+      }
     ],
     "sources": [
       {

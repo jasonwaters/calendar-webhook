@@ -235,23 +235,41 @@ async function loadConfig(configPath) {
   return JSON.parse(content);
 }
 
-function normalizeWebhookUrls(config) {
-  if (
-    Array.isArray(config.webhookUrls) &&
-    config.webhookUrls.every((url) => typeof url === "string" && url.trim().length > 0)
-  ) {
-    return config.webhookUrls;
+function isValidWebhookTarget(target) {
+  return (
+    typeof target === "object" &&
+    target !== null &&
+    typeof target.webhookUrl === "string" &&
+    target.webhookUrl.trim().length > 0
+  );
+}
+
+function normalizeWebhookTargets(config) {
+  if (Array.isArray(config.webhookUrls) && config.webhookUrls.length > 0) {
+    return config.webhookUrls.map((target, index) => {
+      if (typeof target === "string" && target.trim().length > 0) {
+        return { webhookUrl: target };
+      }
+
+      if (isValidWebhookTarget(target)) {
+        return target;
+      }
+
+      throw new Error(
+        `Config "${config.name}" has invalid webhookUrls[${index}]. Expected a non-empty URL string or an object containing "webhookUrl".`,
+      );
+    });
   }
 
   if (typeof config.webhookUrl === "string" && config.webhookUrl.trim().length > 0) {
     console.warn(
       `   ⚠️  "${config.name}" uses deprecated "webhookUrl"; migrate to "webhookUrls" array.`,
     );
-    return [config.webhookUrl];
+    return [{ webhookUrl: config.webhookUrl }];
   }
 
   throw new Error(
-    `Config "${config.name}" must include "webhookUrls" as a non-empty array of strings`,
+    `Config "${config.name}" must include "webhookUrls" as a non-empty array`,
   );
 }
 
@@ -381,11 +399,11 @@ async function postWebhook(url, payload) {
 }
 
 async function processWebhookConfig(config, dryRun) {
-  const webhookUrls = normalizeWebhookUrls(config);
+  const webhookTargets = normalizeWebhookTargets(config);
 
   console.log(`\n📅 Processing: ${config.name}`);
   console.log(`   Sources: ${config.sources.length}`);
-  console.log(`   Webhook destinations: ${webhookUrls.length}`);
+  console.log(`   Webhook destinations: ${webhookTargets.length}`);
 
   try {
     const dateWindow = calculateDateWindow(config);
@@ -412,14 +430,18 @@ async function processWebhookConfig(config, dryRun) {
       return;
     }
 
-    console.log(`\n📤 POSTing ${events.length} events to ${webhookUrls.length} webhook(s)`);
+    console.log(`\n📤 POSTing ${events.length} events to ${webhookTargets.length} webhook(s)`);
     if (config.payloadKey) {
       console.log(`   Payload wrapped in key: "${config.payloadKey}"`);
     }
 
-    for (const webhookUrl of webhookUrls) {
-      console.log(`   → ${webhookUrl}`);
-      await postWebhook(webhookUrl, payload);
+    for (const target of webhookTargets) {
+      if (target.title) {
+        console.log(`   → ${target.title}: ${target.webhookUrl}`);
+      } else {
+        console.log(`   → ${target.webhookUrl}`);
+      }
+      await postWebhook(target.webhookUrl, payload);
     }
     console.log("✅ Webhook POST successful!");
   } catch (error) {

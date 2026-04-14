@@ -50,7 +50,13 @@ The config file contains an array of webhook configurations. Each configuration 
 [
   {
     "name": "My Combined Calendar",
-    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/abc123"],
+    "webhookUrls": [
+      {
+        "title": "Reservations Week Calendar",
+        "recipeUrl": "https://usetrmnl.com/plugins/recipe/21",
+        "webhookUrl": "https://usetrmnl.com/api/custom_plugins/abc123"
+      }
+    ],
     "sources": [
       {
         "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",
@@ -78,8 +84,11 @@ The config file contains an array of webhook configurations. Each configuration 
 - Example: `"Family & Rentals"`, `"Office Display"
 
 #### `webhookUrls` (required)
-- Array of webhook endpoints to POST calendar data to
-- Each URL can be any webhook endpoint that accepts JSON
+- Array of webhook destinations to POST calendar data to
+- Each entry can be either:
+  - a URL string (legacy/simple format), or
+  - an object with `webhookUrl` plus optional metadata fields for human readability
+- The script only uses each entry's `webhookUrl` for POST requests
 
 #### `sources` (required, array)
 - Array of ICS calendar sources to combine
@@ -183,7 +192,13 @@ Defines which events to include in the webhook payload.
 [
   {
     "name": "Living Room Display",
-    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/living-room"],
+    "webhookUrls": [
+      {
+        "title": "Living Room Family Calendar",
+        "recipeUrl": "https://usetrmnl.com/plugins/recipe/living-room",
+        "webhookUrl": "https://usetrmnl.com/api/custom_plugins/living-room"
+      }
+    ],
     "sources": [
       {
         "icsPath": "~/calendars/family.ics",
@@ -197,7 +212,13 @@ Defines which events to include in the webhook payload.
   },
   {
     "name": "Office Display",
-    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/office"],
+    "webhookUrls": [
+      {
+        "title": "Office Calendar",
+        "recipeUrl": "https://usetrmnl.com/plugins/recipe/office",
+        "webhookUrl": "https://usetrmnl.com/api/custom_plugins/office"
+      }
+    ],
     "sources": [
       {
         "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",
