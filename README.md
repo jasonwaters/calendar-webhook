@@ -42,7 +42,7 @@ npm install
 
 ### File: `config/webhooks.json`
 
-The config file contains an array of webhook configurations. Each configuration combines one or more ICS calendars and sends the combined events to a webhook endpoint.
+The config file contains an array of webhook configurations. Each configuration combines one or more ICS calendars and sends the combined events to one or more webhook endpoints.
 
 ### Basic Example
 
@@ -50,7 +50,7 @@ The config file contains an array of webhook configurations. Each configuration 
 [
   {
     "name": "My Combined Calendar",
-    "webhookUrl": "https://usetrmnl.com/api/custom_plugins/abc123",
+    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/abc123"],
     "sources": [
       {
         "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",
@@ -77,9 +77,9 @@ The config file contains an array of webhook configurations. Each configuration 
 - Becomes the `calendar_name` field in the webhook payload
 - Example: `"Family & Rentals"`, `"Office Display"
 
-#### `webhookUrl` (required)
-- The webhook endpoint to POST calendar data to
-- Can be any webhook endpoint that accepts JSON
+#### `webhookUrls` (required)
+- Array of webhook endpoints to POST calendar data to
+- Each URL can be any webhook endpoint that accepts JSON
 
 #### `sources` (required, array)
 - Array of ICS calendar sources to combine
@@ -137,7 +137,7 @@ Defines which events to include in the webhook payload.
 [
   {
     "name": "Rental Reservations",
-    "webhookUrl": "https://usetrmnl.com/api/custom_plugins/abc123",
+    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/abc123"],
     "sources": [
       {
         "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",
@@ -154,7 +154,7 @@ Defines which events to include in the webhook payload.
 [
   {
     "name": "Complete Schedule",
-    "webhookUrl": "https://usetrmnl.com/api/custom_plugins/xyz789",
+    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/xyz789"],
     "sources": [
       {
         "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",
@@ -183,7 +183,7 @@ Defines which events to include in the webhook payload.
 [
   {
     "name": "Living Room Display",
-    "webhookUrl": "https://usetrmnl.com/api/custom_plugins/living-room",
+    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/living-room"],
     "sources": [
       {
         "icsPath": "~/calendars/family.ics",
@@ -197,7 +197,7 @@ Defines which events to include in the webhook payload.
   },
   {
     "name": "Office Display",
-    "webhookUrl": "https://usetrmnl.com/api/custom_plugins/office",
+    "webhookUrls": ["https://usetrmnl.com/api/custom_plugins/office"],
     "sources": [
       {
         "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",
@@ -296,7 +296,7 @@ See [test/README.md](test/README.md) for detailed test documentation.
    - Filter by date window (smart or sliding mode)
    - Sort by start time
    - Build payload with calendar name and sources
-   - POST to webhook URL
+   - POST to each configured webhook URL
 
 ## Source Label Priority
 

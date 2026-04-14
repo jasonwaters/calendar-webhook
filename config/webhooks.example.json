@@ -1,7 +1,9 @@
 [
   {
     "name": "My Combined Calendar",
-    "webhookUrl": "https://usetrmnl.com/api/custom_plugins/your-plugin-id",
+    "webhookUrls": [
+      "https://usetrmnl.com/api/custom_plugins/your-plugin-id"
+    ],
     "sources": [
       {
         "icsPath": "../rental-calendar-sync/output/reservations-2026.ics",

@@ -235,6 +235,26 @@ async function loadConfig(configPath) {
   return JSON.parse(content);
 }
 
+function normalizeWebhookUrls(config) {
+  if (
+    Array.isArray(config.webhookUrls) &&
+    config.webhookUrls.every((url) => typeof url === "string" && url.trim().length > 0)
+  ) {
+    return config.webhookUrls;
+  }
+
+  if (typeof config.webhookUrl === "string" && config.webhookUrl.trim().length > 0) {
+    console.warn(
+      `   ⚠️  "${config.name}" uses deprecated "webhookUrl"; migrate to "webhookUrls" array.`,
+    );
+    return [config.webhookUrl];
+  }
+
+  throw new Error(
+    `Config "${config.name}" must include "webhookUrls" as a non-empty array of strings`,
+  );
+}
+
 function extractSourceLabel(sourceConfig, icsContent, icsPath) {
   // Priority: config label > X-WR-CALNAME > filename
   if (sourceConfig.label) {
@@ -249,7 +269,7 @@ function extractSourceLabel(sourceConfig, icsContent, icsPath) {
     if (calName !== "Calendar") {
       return calName;
     }
-  } catch (e) {
+  } catch {
     // Fall through to filename
   }
 
@@ -361,8 +381,11 @@ async function postWebhook(url, payload) {
 }
 
 async function processWebhookConfig(config, dryRun) {
+  const webhookUrls = normalizeWebhookUrls(config);
+
   console.log(`\n📅 Processing: ${config.name}`);
   console.log(`   Sources: ${config.sources.length}`);
+  console.log(`   Webhook destinations: ${webhookUrls.length}`);
 
   try {
     const dateWindow = calculateDateWindow(config);
@@ -389,12 +412,15 @@ async function processWebhookConfig(config, dryRun) {
       return;
     }
 
-    console.log(`\n📤 POSTing ${events.length} events to: ${config.webhookUrl}`);
+    console.log(`\n📤 POSTing ${events.length} events to ${webhookUrls.length} webhook(s)`);
     if (config.payloadKey) {
       console.log(`   Payload wrapped in key: "${config.payloadKey}"`);
     }
 
-    await postWebhook(config.webhookUrl, payload);
+    for (const webhookUrl of webhookUrls) {
+      console.log(`   → ${webhookUrl}`);
+      await postWebhook(webhookUrl, payload);
+    }
     console.log("✅ Webhook POST successful!");
   } catch (error) {
     console.error(`\n✗ Error processing "${config.name}": ${error.message}`);
