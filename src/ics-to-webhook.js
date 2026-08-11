@@ -126,18 +126,83 @@ function isAllDayEvent(vevent) {
   return dtstart.type === "date";
 }
 
-function eventToJson(vevent, source, occurrenceStart = null, occurrenceEnd = null) {
+function isFloatingTime(icalTime) {
+  // RFC 5545 "floating" times carry no TZID and no trailing Z. ical.js
+  // represents that as Timezone.localTimezone, and its toJSDate() resolves
+  // floating clock digits using the host process's OS timezone - which for
+  // a Docker container defaults to UTC, not wherever the calendar owner is.
+  return (
+    !!icalTime && !icalTime.isDate && icalTime.zone === ICAL.Timezone.localTimezone
+  );
+}
+
+function getTimeZoneOffsetMs(instant, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const parts = {};
+  for (const part of formatter.formatToParts(instant)) {
+    if (part.type !== "literal") {
+      parts[part.type] = parseInt(part.value, 10);
+    }
+  }
+
+  const asUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour === 24 ? 0 : parts.hour,
+    parts.minute,
+    parts.second,
+  );
+
+  return asUtc - instant.getTime();
+}
+
+// Interprets a floating icalTime's wall-clock digits as local time in
+// `timeZone` and returns the resulting instant, independent of the host
+// machine's own timezone.
+function floatingIcalTimeToDate(icalTime, timeZone) {
+  const naiveUtc = Date.UTC(
+    icalTime.year,
+    icalTime.month - 1,
+    icalTime.day,
+    icalTime.hour,
+    icalTime.minute,
+    icalTime.second,
+  );
+  const offset = getTimeZoneOffsetMs(new Date(naiveUtc), timeZone);
+  return new Date(naiveUtc - offset);
+}
+
+function icalTimeToJsDate(icalTime, timeZone) {
+  if (!icalTime) return null;
+  if (timeZone && isFloatingTime(icalTime)) {
+    return floatingIcalTimeToDate(icalTime, timeZone);
+  }
+  return icalTime.toJSDate();
+}
+
+function eventToJson(vevent, source, occurrenceStart = null, occurrenceEnd = null, timeZone = null) {
   const event = new ICAL.Event(vevent);
-  
+
   const startDate = occurrenceStart || event.startDate;
   const endDate = occurrenceEnd || event.endDate;
 
-  const allDay = occurrenceStart 
+  const allDay = occurrenceStart
     ? (occurrenceStart.isDate || false)
     : isAllDayEvent(vevent);
 
-  const startJs = startDate ? startDate.toJSDate() : null;
-  const endJs = endDate ? endDate.toJSDate() : null;
+  const startJs = icalTimeToJsDate(startDate, timeZone);
+  const endJs = icalTimeToJsDate(endDate, timeZone);
 
   const getLocalDateString = (icalTime) => {
     if (!icalTime) return null;
@@ -183,11 +248,11 @@ function collectRecurringOverrideKeys(vevents) {
   return overrideKeys;
 }
 
-function expandRecurringEvent(event, vevent, dateWindow, source, recurringOverrideKeys) {
+function expandRecurringEvent(event, vevent, dateWindow, source, recurringOverrideKeys, timeZone = null) {
   const occurrences = [];
-  
+
   const { minDate, maxDate } = dateWindow;
-  
+
   const expand = event.iterator();
   let count = 0;
   const maxOccurrences = 1000;
@@ -199,14 +264,14 @@ function expandRecurringEvent(event, vevent, dateWindow, source, recurringOverri
     }
 
     count++;
-    
+
     const occurrenceStart = next;
     const duration = event.duration;
     const occurrenceEnd = occurrenceStart.clone();
     occurrenceEnd.addDuration(duration);
 
-    const startJs = occurrenceStart.toJSDate();
-    const endJs = occurrenceEnd.toJSDate();
+    const startJs = icalTimeToJsDate(occurrenceStart, timeZone);
+    const endJs = icalTimeToJsDate(occurrenceEnd, timeZone);
 
     const overrideKey = buildRecurrenceOverrideKey(event.uid, occurrenceStart);
     if (overrideKey && recurringOverrideKeys.has(overrideKey)) {
@@ -218,14 +283,14 @@ function expandRecurringEvent(event, vevent, dateWindow, source, recurringOverri
     }
 
     if (endJs >= minDate && startJs <= maxDate) {
-      occurrences.push(eventToJson(vevent, source, occurrenceStart, occurrenceEnd));
+      occurrences.push(eventToJson(vevent, source, occurrenceStart, occurrenceEnd, timeZone));
     }
   }
 
   return occurrences;
 }
 
-function parseIcsToEvents(icsContent, sourceName, dateWindow = null) {
+function parseIcsToEvents(icsContent, sourceName, dateWindow = null, timeZone = null) {
   const jcalData = ICAL.parse(icsContent);
   const component = new ICAL.Component(jcalData);
   const calendarName = extractCalendarName(component);
@@ -239,7 +304,7 @@ function parseIcsToEvents(icsContent, sourceName, dateWindow = null) {
     const recurrenceId = vevent.getFirstPropertyValue("recurrence-id");
 
     if (recurrenceId) {
-      events.push(eventToJson(vevent, sourceName));
+      events.push(eventToJson(vevent, sourceName, null, null, timeZone));
       continue;
     }
 
@@ -250,10 +315,11 @@ function parseIcsToEvents(icsContent, sourceName, dateWindow = null) {
         dateWindow,
         sourceName,
         recurringOverrideKeys,
+        timeZone,
       );
       events.push(...occurrences);
     } else {
-      events.push(eventToJson(vevent, sourceName));
+      events.push(eventToJson(vevent, sourceName, null, null, timeZone));
     }
   }
 
@@ -354,7 +420,7 @@ async function loadMultipleSources(sources, dateWindow) {
     const sourceLabel = extractSourceLabel(sourceConfig, icsContent, icsPath);
     sourceLabels.push(sourceLabel);
 
-    const { events } = parseIcsToEvents(icsContent, sourceLabel, dateWindow);
+    const { events } = parseIcsToEvents(icsContent, sourceLabel, dateWindow, sourceConfig.timeZone);
     console.log(`   Found ${events.length} events from "${sourceLabel}"`);
 
     allEvents.push(...events);

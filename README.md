@@ -97,6 +97,10 @@ The config file contains an array of webhook configurations. Each configuration 
   - **`label`** (optional): Display name for this source
     - Takes precedence over X-WR-CALNAME from ICS file
     - Used as the `source` field on each event
+  - **`timeZone`** (optional): IANA timezone (e.g. `"America/Denver"`) used to interpret this source's "floating" event times
+    - Floating times are timestamps with no `TZID` and no trailing `Z` (RFC 5545 §3.3.5) — common in ICS feeds exported from subscribed/published calendars (e.g. iCloud-published calendars)
+    - Without this set, floating times are resolved using the host machine's own timezone, which is almost always wrong for a server running in UTC
+    - Timed events that already carry a `TZID` or UTC `Z` are unaffected by this setting
 
 #### `payloadKey` (optional)
 - If specified, wraps the payload in a named key
@@ -425,6 +429,10 @@ cp config/webhooks.example.json config/webhooks.json
 Check:
 1. Webhook URL is correct
 2. Network connectivity
+
+### Event times are off by several hours
+
+This happens when a source ICS feed publishes "floating" times (no `TZID`, no trailing `Z`) — common for calendars re-published through iCloud. Floating times have no inherent timezone, so this script has no way to know which timezone they're meant for unless you tell it. Add `"timeZone": "America/Denver"` (or your zone) to that source in `config/webhooks.json`. Events that already carry a `TZID` or a `Z` suffix aren't affected either way.
 
 ## License
 

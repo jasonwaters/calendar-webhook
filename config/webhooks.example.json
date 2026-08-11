@@ -16,6 +16,11 @@
       {
         "icsPath": "https://calendar.google.com/calendar/ical/your-email@gmail.com/basic.ics",
         "label": "Personal"
+      },
+      {
+        "icsPath": "webcal://p143-caldav.icloud.com/published/2/your-published-calendar-id",
+        "label": "Family",
+        "timeZone": "America/Denver"
       }
     ],
     "payloadKey": "merge_variables",

@@ -315,17 +315,69 @@ END:VEVENT`
         "America/Denver"
       )
     ]);
-    
+
     const dateWindow = {
       minDate: new Date("2026-04-01"),
       maxDate: new Date("2026-04-30")
     };
-    
+
     const { events } = parseIcsToEvents(ics, "Test Source", dateWindow);
-    
+
     events.forEach(e => {
       assert.strictEqual(e.all_day, false, `Occurrence on ${e.start_date} should not be all-day`);
     });
+  });
+
+  it("should resolve floating (no TZID, no Z) times using the configured source timeZone", () => {
+    // Floating DTSTART/DTEND: no TZID param, no trailing Z. RFC 5545 leaves
+    // these ambiguous - this is the shape ICS feeds re-published through
+    // iCloud tend to produce.
+    const ics = createIcsCalendar([
+      `BEGIN:VEVENT
+UID:floating-test-1
+SUMMARY:Blood Donation Appointment
+DTSTART:20260811T130000
+DTEND:20260811T140000
+CREATED:20260101T120000Z
+DTSTAMP:20260101T120000Z
+END:VEVENT`
+    ]);
+
+    const { events } = parseIcsToEvents(ics, "Test Source", null, "America/Denver");
+
+    // 1:00 PM MDT (America/Denver, UTC-6 in August) == 19:00 UTC.
+    assert.strictEqual(events[0].start, "2026-08-11T19:00:00.000Z");
+    assert.strictEqual(events[0].end, "2026-08-11T20:00:00.000Z");
+    assert.strictEqual(events[0].start_date, "2026-08-11");
+  });
+
+  it("should leave TZID/UTC times unaffected by a configured source timeZone", () => {
+    const ics = createIcsCalendar([
+      createSimpleEvent("tz-test-4", "UTC Event", "20260811T130000Z", "20260811T140000Z", false)
+    ]);
+
+    const { events } = parseIcsToEvents(ics, "Test Source", null, "America/Denver");
+
+    assert.strictEqual(events[0].start, "2026-08-11T13:00:00.000Z");
+    assert.strictEqual(events[0].end, "2026-08-11T14:00:00.000Z");
+  });
+
+  it("should fall back to host-timezone resolution for floating times when no timeZone is configured", () => {
+    const ics = createIcsCalendar([
+      `BEGIN:VEVENT
+UID:floating-test-2
+SUMMARY:No Config
+DTSTART:20260811T130000
+DTEND:20260811T140000
+CREATED:20260101T120000Z
+DTSTAMP:20260101T120000Z
+END:VEVENT`
+    ]);
+
+    const { events } = parseIcsToEvents(ics, "Test Source");
+
+    const expected = new Date(2026, 7, 11, 13, 0, 0).toISOString();
+    assert.strictEqual(events[0].start, expected);
   });
 });
 
